@@ -7,7 +7,7 @@ Biblioteca PHP de utilitários para operações comuns do sistema.
 ### Via Composer
 
 ```bash
-composer require buildcake/utils
+composer require buildcake/tools
 ```
 
 ### Instalação Manual
