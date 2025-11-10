@@ -1,5 +1,5 @@
 {
-    "name": "buildcake/utils",
+    "name": "buildcake-tools",
     "description": "Biblioteca de utilitários PHP para operações comuns do sistema",
     "type": "library",
     "license": "MIT",
