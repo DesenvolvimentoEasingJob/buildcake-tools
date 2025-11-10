@@ -1,0 +1,28 @@
+{
+    "name": "buildcake/utils",
+    "description": "Biblioteca de utilitários PHP para operações comuns do sistema",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "BuildCake",
+            "email": "your-email@example.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "BuildCake\\Utils\\": "src/BuildCake/Utils/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BuildCake\\Utils\\Tests\\": "tests/"
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
+
