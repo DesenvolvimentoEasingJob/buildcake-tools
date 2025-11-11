@@ -10,6 +10,41 @@ namespace BuildCake\Utils;
  */
 class Utils
 {
+        /**
+     * Inclui um arquivo procurando recursivamente no sistema de diretórios
+     * 
+     * @param string $filepath Caminho do arquivo a ser incluído
+     * @return mixed Retorna o resultado do include ou string vazia se não encontrado
+     */
+    public static function ReturnPathFile($filepath)
+    {
+        if (file_exists($filepath)) {
+            return include_once($filepath);
+        }
+
+        $filepathConcat = "/" . $filepath;
+        $count = 0;
+        $allcount = 0;
+
+        while (!file_exists($filepathConcat)) {
+            if ($count < 2) {
+                $filepathConcat = "." . $filepathConcat;
+                $count = $count + 1;
+            } else {
+                $count = 0;
+                $filepathConcat = "/" . $filepathConcat;
+            }
+
+            if ($allcount > 32) {
+                return "";
+            }
+
+            $allcount = $allcount + 1;
+        }
+
+        return $filepathConcat;
+    }
+
     /**
      * Inclui um arquivo procurando recursivamente no sistema de diretórios
      * 
@@ -270,6 +305,49 @@ class Utils
             "id" => "",
             "type" => "",
         ];
+
+        $uri = explode('?', $uri)[0];
+        $segments = explode('/', $uri);
+        $id = end($segments);
+
+        if (is_numeric($id)) {
+            $id = intval($id);
+        } elseif (preg_match('/^[a-f0-9]{11,32}$/i', $id)) {
+            $id = $id;
+        } else {
+            $id = "";
+        }
+
+        if(isset($_GET['id'])) { 
+            $id = $_GET['id']; 
+        }
+
+        if (count($segments) >= 2) {
+            $module = $segments[1];
+            $controller = $segments[2];
+            
+            // Normalize module name to match directory structure (case-insensitive)
+            $module = self::normalizeModuleName($module);
+            
+            // Normalize controller name (case-insensitive)
+            $apiFile = self::normalizeControllerName($controller);
+            
+            $apiPath = self::ReturnPathFile("/src/$module/controllers/$apiFile");
+
+            $retorno["file"] = $apiPath;
+            $retorno["route"] = "$module/" . $controller;
+            $retorno["id"] = $id;
+            $retorno["type"] = "api";
+            
+            if($id != ""){
+                $_GET['id'] = $id;
+                if(is_array($_POST)){
+                    $_POST["id"] = $id;
+                }else{
+                    $_POST = [ "id" => $id ];
+                }
+            }
+        }
 
         return $retorno;
     }
