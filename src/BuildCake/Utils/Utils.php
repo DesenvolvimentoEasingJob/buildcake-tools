@@ -21,7 +21,7 @@ class Utils
         if (file_exists($filepath)) {
             return include_once($filepath);
         }
-
+        
         $filepathConcat = "/" . $filepath;
         $count = 0;
         $allcount = 0;
@@ -89,47 +89,59 @@ class Utils
      */
     public static function includeService($filepath, $module = "")
     {
+        // Detectar o módulo do backtrace se não fornecido
         if ($module == "") {
-            $backtrace = debug_backtrace();
-            if (isset($backtrace[0]["file"])) {
-                $pathParts = explode("/", $backtrace[0]["file"]);
-                $module = isset($pathParts[5]) ? $pathParts[5] : "";
+            $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
+            foreach ($backtrace as $trace) {
+                if (isset($trace["file"])) {
+                    $pathParts = explode(DIRECTORY_SEPARATOR, str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $trace["file"]));
+                    // Procurar pelo índice que contém "src" e pegar o próximo (nome do módulo)
+                    $srcIndex = array_search("src", $pathParts);
+                    if ($srcIndex !== false && isset($pathParts[$srcIndex + 1])) {
+                        $module = $pathParts[$srcIndex + 1];
+                        break;
+                    }
+                }
             }
+        }
+
+        // Se ainda não encontrou o módulo, retorna vazio
+        if ($module == "") {
+            return "";
         }
 
         // Normalizar o nome do módulo para case-insensitive
         $module = self::normalizeModuleName($module);
         
-        $filepath = "/src/" . $module . "/services/" . $filepath . "Service.php";
+        // Obter o diretório raiz do projeto
+        $projectRoot = self::getProjectRoot();
+        
+        // Construir o caminho absoluto diretamente: src/{module}/services/{filepath}Service.php
+        $servicePath = $projectRoot . DIRECTORY_SEPARATOR . "src" . DIRECTORY_SEPARATOR . 
+                       $module . DIRECTORY_SEPARATOR . "services" . DIRECTORY_SEPARATOR . 
+                       $filepath . "Service.php";
         
         // Tentar encontrar o arquivo de forma case-insensitive
-        $actualPath = self::findFileCaseInsensitive($filepath);
+        $actualPath = self::findFileCaseInsensitive($servicePath);
         if ($actualPath) {
             return include_once($actualPath);
         }
 
-        // Fallback para o método original de busca recursiva
-        $filepathConcat = "/" . $filepath;
-        $count = 0;
-        $allcount = 0;
+        // Se não encontrou, retorna vazio
+        return "";
+    }
 
-        while (!file_exists($filepathConcat)) {
-            if ($count < 2) {
-                $filepathConcat = "." . $filepathConcat;
-                $count = $count + 1;
-            } else {
-                $count = 0;
-                $filepathConcat = "/" . $filepathConcat;
-            }
-
-            if ($allcount > 32) {
-                return "";
-            }
-
-            $allcount = $allcount + 1;
-        }
-
-        return include_once($filepathConcat);
+    /**
+     * Obtém o diretório raiz do projeto
+     * 
+     * @return string Caminho absoluto do diretório raiz do projeto
+     */
+    private static function getProjectRoot()
+    {
+        // A partir de vendor/buildcake/tools/src/BuildCake/Utils, subir 4 níveis para chegar na raiz
+        // Usa a mesma lógica do normalizeModuleName que usa __DIR__ . '/../../../../src'
+        $srcPath = __DIR__ . '/../../../../src';
+        return dirname($srcPath);
     }
 
     /**
