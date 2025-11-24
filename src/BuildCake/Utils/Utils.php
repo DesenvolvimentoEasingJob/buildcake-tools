@@ -1,7 +1,5 @@
 <?php
 
-namespace BuildCake\Utils;
-
 /**
  * Classe Utils - Utilitários comuns do sistema
  * 
@@ -19,7 +17,7 @@ class Utils
     public static function ReturnPathFile($filepath)
     {
         if (file_exists($filepath)) {
-            return include_once($filepath);
+            return $filepath;
         }
         
         $filepathConcat = "/" . $filepath;
@@ -45,40 +43,7 @@ class Utils
         return $filepathConcat;
     }
 
-    /**
-     * Inclui um arquivo procurando recursivamente no sistema de diretórios
-     * 
-     * @param string $filepath Caminho do arquivo a ser incluído
-     * @return mixed Retorna o resultado do include ou string vazia se não encontrado
-     */
-    public static function includeFile($filepath)
-    {
-        if (file_exists($filepath)) {
-            return include_once($filepath);
-        }
 
-        $filepathConcat = "/" . $filepath;
-        $count = 0;
-        $allcount = 0;
-
-        while (!file_exists($filepathConcat)) {
-            if ($count < 2) {
-                $filepathConcat = "." . $filepathConcat;
-                $count = $count + 1;
-            } else {
-                $count = 0;
-                $filepathConcat = "/" . $filepathConcat;
-            }
-
-            if ($allcount > 32) {
-                return "";
-            }
-
-            $allcount = $allcount + 1;
-        }
-
-        return include_once($filepathConcat);
-    }
 
     /**
      * Inclui um arquivo de serviço baseado no módulo
@@ -87,131 +52,16 @@ class Utils
      * @param string $module Nome do módulo (opcional, detecta automaticamente se vazio)
      * @return mixed Retorna o resultado do include ou string vazia se não encontrado
      */
-    public static function includeService($filepath, $module = "")
+    public static function IncludeService($service, $module)
     {
-        // Detectar o módulo do backtrace se não fornecido
-        if ($module == "") {
-            $backtrace = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10);
-            foreach ($backtrace as $trace) {
-                if (isset($trace["file"])) {
-                    $pathParts = explode(DIRECTORY_SEPARATOR, str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $trace["file"]));
-                    // Procurar pelo índice que contém "src" e pegar o próximo (nome do módulo)
-                    $srcIndex = array_search("src", $pathParts);
-                    if ($srcIndex !== false && isset($pathParts[$srcIndex + 1])) {
-                        $module = $pathParts[$srcIndex + 1];
-                        break;
-                    }
-                }
-            }
+        $filepath = self::ReturnPathFile("src/{$module}/services/{$service}Service.php");
+        if(file_exists($filepath)) {
+            include_once $filepath;
+            return true;
+        } else {
+            self::sendResponse(404, [], 'Service not found');
         }
-
-        // Se ainda não encontrou o módulo, retorna vazio
-        if ($module == "") {
-            return "";
-        }
-
-        // Normalizar o nome do módulo para case-insensitive
-        $module = self::normalizeModuleName($module);
-        
-        // Obter o diretório raiz do projeto
-        $projectRoot = self::getProjectRoot();
-        
-        // Construir o caminho absoluto diretamente: src/{module}/services/{filepath}Service.php
-        $servicePath = $projectRoot . DIRECTORY_SEPARATOR . "src" . DIRECTORY_SEPARATOR . 
-                       $module . DIRECTORY_SEPARATOR . "services" . DIRECTORY_SEPARATOR . 
-                       $filepath . "Service.php";
-        
-        // Tentar encontrar o arquivo de forma case-insensitive
-        $actualPath = self::findFileCaseInsensitive($servicePath);
-        if ($actualPath) {
-            return include_once($actualPath);
-        }
-
         // Se não encontrou, retorna vazio
-        return "";
-    }
-
-    /**
-     * Obtém o diretório raiz do projeto
-     * 
-     * @return string Caminho absoluto do diretório raiz do projeto
-     */
-    private static function getProjectRoot()
-    {
-        // A partir de vendor/buildcake/tools/src/BuildCake/Utils, subir 4 níveis para chegar na raiz
-        // Usa a mesma lógica do normalizeModuleName que usa __DIR__ . '/../../../../src'
-        $srcPath = __DIR__ . '/../../../../src';
-        return dirname($srcPath);
-    }
-
-    /**
-     * Encontra um arquivo de forma case-insensitive
-     * 
-     * @param string $filepath Caminho do arquivo
-     * @return string|false Retorna o caminho real do arquivo ou false se não encontrado
-     */
-    private static function findFileCaseInsensitive($filepath)
-    {
-        // Se o arquivo existe exatamente como especificado, retorna o caminho
-        if (file_exists($filepath)) {
-            return $filepath;
-        }
-
-        // Extrair diretório e nome do arquivo
-        $pathInfo = pathinfo($filepath);
-        $directory = $pathInfo['dirname'];
-        $filename = $pathInfo['basename'];
-
-        // Se o diretório não existe, tentar encontrar uma variação case-insensitive
-        if (!is_dir($directory)) {
-            $parentDir = dirname($directory);
-            $targetDir = basename($directory);
-            
-            if (is_dir($parentDir)) {
-                $actualDir = self::findDirectoryCaseInsensitive($parentDir, $targetDir);
-                if ($actualDir) {
-                    $directory = $actualDir;
-                } else {
-                    return false; // Diretório não encontrado
-                }
-            } else {
-                return false;
-            }
-        }
-
-        // Procurar pelo arquivo no diretório encontrado
-        if (is_dir($directory)) {
-            $files = scandir($directory);
-            foreach ($files as $file) {
-                if (strcasecmp($file, $filename) === 0) {
-                    return $directory . '/' . $file;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Encontra um diretório de forma case-insensitive
-     * 
-     * @param string $parentDir Diretório pai
-     * @param string $targetDir Nome do diretório alvo
-     * @return string|false Retorna o caminho real do diretório ou false se não encontrado
-     */
-    private static function findDirectoryCaseInsensitive($parentDir, $targetDir)
-    {
-        if (!is_dir($parentDir)) {
-            return false;
-        }
-
-        $items = scandir($parentDir);
-        foreach ($items as $item) {
-            if (is_dir($parentDir . '/' . $item) && strcasecmp($item, $targetDir) === 0) {
-                return $parentDir . '/' . $item;
-            }
-        }
-
         return false;
     }
 
@@ -275,142 +125,29 @@ class Utils
      * 
      * @return array Array com informações sobre file, route, id e type
      */
-    public static function getFileRequest()
+    public static function includeFileRequest($root = "src",$folder = "controllers",$file = "Controller.php")
     {
         if (!isset($_SERVER['REQUEST_URI'])) {
-            return [
-                "file" => "",
-                "route" => "",
-                "id" => "",
-                "type" => "",
-            ];
+            self::sendResponse(404, [], 'API not found');
         }
 
         $uri = trim($_SERVER['REQUEST_URI'], '/');
         $parms = explode('?', $uri);
-        $path = $parms[0];
+        $segments = explode('/', $parms[0]);
 
-        // Static assets only (CSS, JS, images, fonts)
-        if (preg_match('/\.(js|css|png|jpg|jpeg|svg|woff2?|ttf|map|ico|gif|webp)$/', $path)) {
-            return [
-                "file" => "public/" . $path,
-                "route" => "static_asset",
-                "type" => "static_asset"
-            ];
+        if(count($segments) < 2) {
+            self::sendResponse(404, [], 'API not found');
         }
 
-        // Default: API logic
-        return self::handleApiRoute($uri);
-    }
+        $module = $segments[count($segments) - 2];
+        $controller = $segments[count($segments) - 1];
+        $path = "{$root}/{$module}/{$folder}/{$controller}{$file}";
 
-    /**
-     * Processa rotas de API
-     * 
-     * @param string $uri URI da requisição
-     * @return array Array com informações sobre file, route, id e type
-     */
-    private static function handleApiRoute($uri)
-    {
-        $retorno = [
-            "file" => "",
-            "route" => "",
-            "id" => "",
-            "type" => "",
-        ];
-
-        $uri = explode('?', $uri)[0];
-        $segments = explode('/', $uri);
-        $id = end($segments);
-
-        if (is_numeric($id)) {
-            $id = intval($id);
-        } elseif (preg_match('/^[a-f0-9]{11,32}$/i', $id)) {
-            $id = $id;
+        if (file_exists($path)) {
+            include_once $path;
         } else {
-            $id = "";
+            self::sendResponse(404, [], 'API not found');
         }
-
-        if(isset($_GET['id'])) { 
-            $id = $_GET['id']; 
-        }
-
-        if (count($segments) >= 2) {
-            $module = $segments[1];
-            $controller = $segments[2];
-            
-            // Normalize module name to match directory structure (case-insensitive)
-            $module = self::normalizeModuleName($module);
-            
-            // Normalize controller name (case-insensitive)
-            $apiFile = self::normalizeControllerName($controller);
-            
-            $apiPath = self::ReturnPathFile("/src/$module/controllers/$apiFile");
-
-            $retorno["file"] = $apiPath;
-            $retorno["route"] = "$module/" . $controller;
-            $retorno["id"] = $id;
-            $retorno["type"] = "api";
-            
-            if($id != ""){
-                $_GET['id'] = $id;
-                if(is_array($_POST)){
-                    $_POST["id"] = $id;
-                }else{
-                    $_POST = [ "id" => $id ];
-                }
-            }
-        }
-
-        return $retorno;
-    }
-
-    /**
-     * Normaliza o nome do módulo para corresponder à estrutura de diretórios (case-insensitive)
-     * 
-     * @param string $module Nome do módulo
-     * @return string Nome do módulo normalizado
-     */
-    private static function normalizeModuleName($module)
-    {
-        $module = strtolower($module);
-        $srcPath = __DIR__ . '/../../../../src';
-    
-        if (is_dir($srcPath)) {
-            foreach (scandir($srcPath) as $entry) {
-                $fullPath = $srcPath . '/' . $entry;
-                if (is_dir($fullPath) && strtolower($entry) === $module) {
-                    return $entry; // Retorna o nome exato da pasta com a capitalização correta
-                }
-            }
-        }
-    
-        // Se não encontrou, retorna ucfirst como fallback
-        return ucfirst($module);
-    }
-
-    /**
-     * Normaliza o nome do controller para corresponder à estrutura de arquivos (case-insensitive)
-     * 
-     * @param string $controller Nome do controller
-     * @return string Nome do controller normalizado
-     */
-    private static function normalizeControllerName($controller)
-    {
-        $controller = strtolower($controller);
-        $srcPath = __DIR__ . '/../../../../src';
-        $controllers = glob($srcPath . '/*/controllers/*.php');
-    
-        foreach ($controllers as $file) {
-            $baseName = basename($file);
-            $cleanName = strtolower(str_replace('Controller.php', '', $baseName));
-    
-            if ($cleanName === $controller) {
-                return $baseName; // Retorna o nome real com capitalização exata
-            }
-        }
-    
-        // Se não encontrou, retorna fallback
-        return ucfirst($controller) . 'Controller.php';
     }
 
     /**
