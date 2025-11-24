@@ -1,5 +1,6 @@
 <?php
 
+namespace BuildCake\Utils;
 /**
  * Classe Utils - Utilitários comuns do sistema
  * 
